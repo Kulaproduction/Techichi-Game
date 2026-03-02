@@ -288,10 +288,8 @@
     if (gameOver || paused) return;
     if (!player.alive || player.won) return;
 
-    // tracisz serce
     loseLife("Czas minął");
 
-    // jeśli jeszcze żyjesz: wróć na start rundy + reset czasu
     if (!gameOver && player.alive) {
       player.x = playerStart.x;
       player.y = playerStart.y;
@@ -488,6 +486,13 @@
     makeCatOnPlatform(5, 1600, -1),
     makeCatOnPlatform(7, 2300,  1),
   ];
+
+  const catsL3Start = platforms.map((p, idx) => {
+    const dir = (idx % 2 === 0) ? 1 : -1;
+    const x = p.x + p.w * 0.5;
+    return makeCatOnPlatform(idx, x, dir);
+  });
+
   let cats = [];
 
   // ========= Oscypki =========
@@ -525,8 +530,21 @@
     onTopOf(5,  90),
   ];
 
+  // ✅ Runda 3: dokładnie 14 nowych oscypków do zebrania
+  const collectiblesL3Start = [
+    onTopOf(0,  30), onTopOf(0, 180),
+    onTopOf(1,  20), onTopOf(1, 190),
+    onTopOf(2,  20), onTopOf(2,  90), onTopOf(2, 160),
+    onTopOf(3,  20), onTopOf(3, 140),
+    onTopOf(4,  30), onTopOf(4, 200),
+    onTopOf(5, 110),
+    onTopOf(6, 210),
+    onTopOf(8,  90),
+  ];
+
   let collectibles = [];
   let l2Added = false;
+  let l3Added = false;
 
   function addCollectibles(list) {
     for (const o of list) collectibles.push({ ...o });
@@ -584,12 +602,13 @@
     player.invuln = 60;
 
     bullets = [];
-    resetRoundTimer(); // ✅ 30s na rundę
+    resetRoundTimer();
 
     if (level === 1) {
       cats = catsStart.map(c => ({ ...c, shootCd: 9999 }));
       collectibles = collectiblesStart.map(o => ({ ...o }));
       l2Added = false;
+      l3Added = false;
     }
 
     if (level === 2) {
@@ -597,6 +616,16 @@
       if (!l2Added) {
         addCollectibles(collectiblesL2Start);
         l2Added = true;
+      }
+    }
+
+    // ✅ Runda 3: kot na każdym podeście + bez strzelania + dodaj 14 nowych oscypków
+    if (level === 3) {
+      cats = catsL3Start.map(c => ({ ...c, shootCd: 9999 }));
+      bullets = []; // czyścimy pociski z rundy 2
+      if (!l3Added) {
+        addCollectibles(collectiblesL3Start);
+        l3Added = true;
       }
     }
 
@@ -622,12 +651,13 @@
     cats = catsStart.map(c => ({...c, shootCd: 9999 }));
     collectibles = collectiblesStart.map(o => ({...o}));
     l2Added = false;
+    l3Added = false;
 
     smoke = [];
     splashes = [];
     gameOver = false;
 
-    resetRoundTimer(); // ✅
+    resetRoundTimer();
 
     paused = true;
     started = false;
@@ -707,6 +737,7 @@
     const doorBox = { x: hut.door.x, y: hut.door.y, w: hut.door.w, h: hut.door.h };
     if (!player.won && aabb(player, doorBox)) {
       if (level === 1) startLevel(2);
+      else if (level === 2) startLevel(3);
       else win();
     }
 
@@ -720,6 +751,7 @@
       const p = platforms[c.platformIndex];
       c.y = p.y - c.h;
 
+      // ✅ Strzelanie tylko w rundzie 2
       if (level === 2) {
         c.shootCd--;
         if (c.shootCd <= 0 && player.alive && !player.won) {
@@ -785,7 +817,6 @@
       return;
     }
 
-    // ✅ serduszka w statusie (zamiast liczby)
     setStatus(reason + " – zostało: " + livesToHearts(player.lives));
   }
 
@@ -803,6 +834,12 @@
 
   // ========= Drawing =========
   function drawBackground() {
+    if (level === 3) {
+      drawCaveBackground();
+      drawWater();
+      return;
+    }
+
     const g = ctx.createLinearGradient(0,0,0,H);
     g.addColorStop(0, "#cfefff");
     g.addColorStop(1, "#f7fbff");
@@ -820,6 +857,45 @@
     drawMountain(900, 440, 620, 280, "rgba(85,130,175,0.50)");
 
     drawWater();
+  }
+
+  function drawCaveBackground() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#1a1f2a");
+    g.addColorStop(0.55, "#242a36");
+    g.addColorStop(1, "#121621");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    for (let i=0; i<10; i++) {
+      const x = i * (W/9) + (Math.sin((Date.now()/900) + i) * 8);
+      const y = 40 + (i%2)*14;
+      ctx.beginPath();
+      ctx.moveTo(x - 90, y + 10);
+      ctx.quadraticCurveTo(x - 30, y - 40, x + 30, y - 10);
+      ctx.quadraticCurveTo(x + 80, y + 20, x + 120, y + 6);
+      ctx.quadraticCurveTo(x + 30, y + 40, x - 90, y + 10);
+      ctx.fill();
+    }
+
+    for (let i=0; i<140; i++) {
+      const rx = (i * 73) % W;
+      const ry = 70 + ((i * 191) % (H - 120));
+      const r  = 6 + ((i * 17) % 14);
+
+      const shade = 0.035 + ((i % 7) * 0.007);
+      ctx.fillStyle = `rgba(255,255,255,${shade})`;
+      ctx.beginPath();
+      ctx.ellipse(rx, ry, r*1.4, r, (i%9)*0.2, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    const glow = ctx.createRadialGradient(W*0.55, H*0.35, 10, W*0.55, H*0.35, 360);
+    glow.addColorStop(0, "rgba(120,180,255,0.10)");
+    glow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0,0,W,H);
   }
 
   function drawWater() {
@@ -989,17 +1065,22 @@
     ctx.ellipse(x + c.w/2, y + c.h + 2, 14, 5, 0, 0, Math.PI*2);
     ctx.fill();
 
-    ctx.fillStyle = "#9ca3af";
+    const body = (level === 3) ? "#ef4444" : "#9ca3af";
+    const head = (level === 3) ? "#fb7185" : "#b0b7c3";
+    const ear  = (level === 3) ? "#dc2626" : "#9ca3af";
+    const tail = (level === 3) ? "#ef4444" : "#9ca3af";
+
+    ctx.fillStyle = body;
     ctx.beginPath();
     ctx.ellipse(x + 22, y + 16, 16, 10, 0, 0, Math.PI*2);
     ctx.fill();
 
-    ctx.fillStyle = "#b0b7c3";
+    ctx.fillStyle = head;
     ctx.beginPath();
     ctx.ellipse(x + 12, y + 12, 10, 9, 0, 0, Math.PI*2);
     ctx.fill();
 
-    ctx.fillStyle = "#9ca3af";
+    ctx.fillStyle = ear;
     ctx.beginPath();
     ctx.moveTo(x + 5, y + 6);
     ctx.lineTo(x + 10, y + 0);
@@ -1019,7 +1100,7 @@
     ctx.arc(x + 9, y + 12, 1.8, 0, Math.PI*2);
     ctx.fill();
 
-    ctx.strokeStyle = "#9ca3af";
+    ctx.strokeStyle = tail;
     ctx.lineWidth = 4;
     ctx.lineCap = "round";
     ctx.beginPath();
@@ -1148,12 +1229,10 @@
     ctx.fillText("WORLD", W/2 - 70, 10);
     ctx.fillText(String(level) + "-1", W/2 - 38, 32);
 
-    // ✅ LIFE jako serduszka
     ctx.fillText("LIFE", W - 180, 10);
     ctx.font = "20px system-ui, sans-serif";
     ctx.fillText(livesToHearts(player.lives), W - 120, 10);
 
-    // ✅ TIME jako odliczanie 30s
     ctx.font = "20px monospace";
     ctx.fillText("TIME", W - 180, 32);
     ctx.fillText(formatTimeLeft(),  W - 120, 32);
@@ -1161,12 +1240,10 @@
     ctx.restore();
   }
 
-  // ========= Main loop with delta time =========
   function update(dt) {
     if (paused) return;
 
     if (!gameOver) {
-      // ✅ odliczaj czas tylko podczas gry
       timeLeft -= dt;
       if (timeLeft <= 0) {
         timeLeft = 0;
