@@ -286,75 +286,9 @@
     return "❤️".repeat(n);
   }
 
-  function onTimeOut() {
-    if (gameOver || paused) return;
-    if (!player.alive || player.won) return;
-
-    loseLife("Czas minął");
-
-    if (!gameOver && player.alive) {
-      player.x = playerStart.x;
-      player.y = playerStart.y;
-      player.vx = 0; player.vy = 0;
-      player.onGround = false;
-      player.invuln = 60;
-      resetRoundTimer();
-    }
-  }
-
   // ========= Input + Start from Splash =========
   const keys = new Set();
   let started = false;
-
-  function startFromSplash() {
-    if (started) return;
-    started = true;
-
-    if (splash) splash.style.display = "none";
-    startLevel(1);
-    paused = false;
-    toggleBtn.textContent = "Pauza";
-    setStatus("Runda: 1");
-    unlockAudioOnce();
-  }
-
-  if (splash) splash.addEventListener("pointerdown", startFromSplash);
-
-  const btnLeft  = document.getElementById("btnLeft");
-  const btnRight = document.getElementById("btnRight");
-  const btnJump  = document.getElementById("btnJump");
-
-  function bindHold(btn, code) {
-    if (!btn) return;
-    const down = (e) => { e.preventDefault(); startFromSplash(); keys.add(code); };
-    const up   = (e) => { e.preventDefault(); keys.delete(code); };
-    btn.addEventListener("pointerdown", down);
-    btn.addEventListener("pointerup", up);
-    btn.addEventListener("pointercancel", up);
-    btn.addEventListener("pointerleave", up);
-  }
-  bindHold(btnLeft, "ArrowLeft");
-  bindHold(btnRight, "ArrowRight");
-  bindHold(btnJump, "Space");
-
-  window.addEventListener("keydown", (e) => {
-    if (["ArrowLeft","ArrowRight","Space","KeyP","ArrowUp","KeyR","Enter"].includes(e.code)) e.preventDefault();
-    if (!started && (e.code === "Enter" || e.code === "Space")) startFromSplash();
-
-    keys.add(e.code);
-    if (e.code === "KeyP") togglePause();
-    if (e.code === "KeyR") reset();
-  }, { passive: false });
-
-  window.addEventListener("keyup", (e) => keys.delete(e.code));
-
-  function togglePause() {
-    if (gameOver) return;
-    paused = !paused;
-    toggleBtn.textContent = paused ? "Wznów" : "Pauza";
-    setStatus(paused ? "Pauza" : "Gramy");
-  }
-  toggleBtn.addEventListener("click", togglePause);
 
   // ========= World =========
   const WATER_Y = 495;
@@ -378,7 +312,6 @@
   let bullets = [];
   let cats = [];
   let collectibles = [];
-  let l2Added = false, l3Added = false, l4Added = false;
 
   function updatePlatforms(dt) {
     const prev = platforms;
@@ -430,11 +363,12 @@
     face: 1,
     alive: true,
     won: false,
-    lives: 2,
+    lives: 3,
     invuln: 0,
 
-    // ważne: wynik rundy (CEL) resetuje się w startLevel
-    roundScore: 0,
+    // Wyniki:
+    totalScore: 0, // suma oscypków zebranych w całej grze
+    roundScore: 0, // oscypki zebrane w tej rundzie (CEL)
 
     lastFace: 1
   };
@@ -547,7 +481,7 @@
     return makeCatOnPlatform(idx, x, dir);
   });
 
-  // ========= Oscypki (dynamic: trzymają się platform) =========
+  // ========= Oscypki =========
   function onTopOf(pIndex, xOffset, r=10) {
     return { platformIndex: pIndex, xOffset, r, taken: false };
   }
@@ -607,10 +541,6 @@
     onTopOf(7,  60), onTopOf(7, 150),
   ];
 
-  function addCollectibles(list) {
-    for (const o of list) collectibles.push({ ...o });
-  }
-
   function collectCheck() {
     const pb = { x: player.x, y: player.y, w: player.w, h: player.h };
     for (const o of collectibles) {
@@ -619,7 +549,12 @@
       const ob = { x: pos.x - pos.r, y: pos.y - pos.r, w: pos.r*2, h: pos.r*2 };
       if (aabb(pb, ob)) {
         o.taken = true;
+
+        // CEL (runda) rośnie tylko w tej rundzie:
         player.roundScore += 1;
+
+        // X (suma gry) rośnie zawsze:
+        player.totalScore += 1;
 
         ensureAudio();
         if (audioCtx && audioCtx.state !== "suspended") {
@@ -637,6 +572,22 @@
   const FRICTION = 0.82;
   const JUMP = 11.2;
 
+  function onTimeOut() {
+    if (gameOver || paused) return;
+    if (!player.alive || player.won) return;
+
+    loseLife("Czas minął");
+
+    if (!gameOver && player.alive) {
+      player.x = playerStart.x;
+      player.y = playerStart.y;
+      player.vx = 0; player.vy = 0;
+      player.onGround = false;
+      player.invuln = 60;
+      resetRoundTimer();
+    }
+  }
+
   function startLevel(nr) {
     level = nr;
 
@@ -651,7 +602,7 @@
     player.alive = true;
     player.invuln = 60;
 
-    // KLUCZ: wynik rundy resetujemy na początku każdej rundy
+    // KLUCZ: resetuje się tylko CEL (runda)
     player.roundScore = 0;
 
     bullets = [];
@@ -660,29 +611,25 @@
     if (level === 1) {
       cats = catsStart.map(c => ({ ...c, shootCd: 9999 }));
       collectibles = collectiblesStart.map(o => ({ ...o }));
-      l2Added = false; l3Added = false; l4Added = false;
       platformT = 0;
     }
 
     if (level === 2) {
       cats = catsStart.map(c => ({ ...c, shootCd: 120 + Math.floor(Math.random() * 140) }));
-      collectibles = collectiblesL2Start.map(o => ({ ...o })); // osobna pula dla tej rundy
-      l2Added = true;
+      collectibles = collectiblesL2Start.map(o => ({ ...o }));
     }
 
     if (level === 3) {
       cats = catsL3Start.map(c => ({ ...c, shootCd: 9999 }));
       bullets = [];
-      collectibles = collectiblesL3Start.map(o => ({ ...o })); // osobna pula dla tej rundy
-      l3Added = true;
+      collectibles = collectiblesL3Start.map(o => ({ ...o }));
     }
 
     if (level === 4) {
       cats = catsStart.map(c => ({ ...c, shootCd: 120 + Math.floor(Math.random() * 140) }));
       bullets = [];
       platformT = 0;
-      collectibles = collectiblesL4Start.map(o => ({ ...o })); // osobna pula dla tej rundy
-      l4Added = true;
+      collectibles = collectiblesL4Start.map(o => ({ ...o }));
     }
 
     gameOver = false;
@@ -691,6 +638,57 @@
     setStatus("Runda: " + level);
   }
 
+  function startFromSplash() {
+    if (started) return;
+    started = true;
+
+    if (splash) splash.style.display = "none";
+    startLevel(1);
+    paused = false;
+    toggleBtn.textContent = "Pauza";
+    setStatus("Runda: 1");
+    unlockAudioOnce();
+  }
+
+  if (splash) splash.addEventListener("pointerdown", startFromSplash);
+
+  const btnLeft  = document.getElementById("btnLeft");
+  const btnRight = document.getElementById("btnRight");
+  const btnJump  = document.getElementById("btnJump");
+
+  function bindHold(btn, code) {
+    if (!btn) return;
+    const down = (e) => { e.preventDefault(); startFromSplash(); keys.add(code); };
+    const up   = (e) => { e.preventDefault(); keys.delete(code); };
+    btn.addEventListener("pointerdown", down);
+    btn.addEventListener("pointerup", up);
+    btn.addEventListener("pointercancel", up);
+    btn.addEventListener("pointerleave", up);
+  }
+  bindHold(btnLeft, "ArrowLeft");
+  bindHold(btnRight, "ArrowRight");
+  bindHold(btnJump, "Space");
+
+  window.addEventListener("keydown", (e) => {
+    if (["ArrowLeft","ArrowRight","Space","KeyP","ArrowUp","KeyR","Enter"].includes(e.code)) e.preventDefault();
+    if (!started && (e.code === "Enter" || e.code === "Space")) startFromSplash();
+
+    keys.add(e.code);
+    if (e.code === "KeyP") togglePause();
+    if (e.code === "KeyR") reset();
+  }, { passive: false });
+
+  window.addEventListener("keyup", (e) => keys.delete(e.code));
+
+  function togglePause() {
+    if (gameOver) return;
+    paused = !paused;
+    toggleBtn.textContent = paused ? "Wznów" : "Pauza";
+    setStatus(paused ? "Pauza" : "Gramy");
+  }
+  toggleBtn.addEventListener("click", togglePause);
+
+  // ========= Reset całej gry (przycisk + R) =========
   function reset() {
     player.x = playerStart.x; player.y = playerStart.y;
     player.vx = 0; player.vy = 0;
@@ -698,20 +696,21 @@
     player.face = 1;
     player.lastFace = 1;
     player.alive = true; player.won = false;
-    player.lives = 2;
+    player.lives = 3;
     player.invuln = 0;
+
+    // reset wyników:
     player.roundScore = 0;
+    player.totalScore = 0;
 
     level = 1;
 
-    // domyślnie (przed startem) ustawiamy 30
     roundTime = ROUND_TIME_DEFAULT;
     timeLeft = roundTime;
 
     bullets = [];
     cats = catsStart.map(c => ({...c, shootCd: 9999 }));
     collectibles = collectiblesStart.map(o => ({...o}));
-    l2Added = false; l3Added = false; l4Added = false;
 
     platforms = basePlatforms.map(p => ({ ...p }));
     platformT = 0;
@@ -792,11 +791,22 @@
     resolvePlatforms(player);
     collectCheck();
 
+    // woda = strata życia + respawn
     if (player.y + player.h > WATER_Y) {
       spawnSplash(player.x + player.w/2, WATER_Y);
       loseLife("Wpadłeś do wody");
+
+      if (player.alive) {
+        player.x = playerStart.x;
+        player.y = playerStart.y;
+        player.vx = 0; player.vy = 0;
+        player.onGround = false;
+        player.invuln = 60;
+        resetRoundTimer();
+      }
     }
 
+    // drzwi chaty = przejście rundy (jeśli CEL spełniony)
     const doorBox = { x: hut.door.x, y: hut.door.y, w: hut.door.w, h: hut.door.h };
     if (!player.won && aabb(player, doorBox)) {
       const need = requiredForLevel(level);
@@ -1349,11 +1359,9 @@
     ctx.fillStyle = "#ffffff";
     ctx.textBaseline = "top";
 
-    // lewa strona
     ctx.font = "20px monospace";
     ctx.fillText("TECHICHI", 18, 10);
 
-    // oscypek + licznik rundy (dla wyglądu)
     const ox = 180, oy = 14;
     ctx.fillStyle = "#f4d27a";
     ctx.beginPath();
@@ -1365,28 +1373,21 @@
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "20px monospace";
-    const scoreStr = String(player.roundScore).padStart(2, "0");
-    ctx.fillText("x " + scoreStr, 200, 10);
+    ctx.fillText("x " + String(player.totalScore).padStart(2,"0"), 200, 10);
 
-    // środek
     ctx.fillText("WORLD", W/2 - 70, 10);
     ctx.fillText(String(level) + "-1", W/2 - 38, 32);
 
-    // prawa strona: CEL PRZED LIFE, taki sam font jak LIFE
     const need = requiredForLevel(level);
-
-    // CEL (font jak LIFE = 20px monospace)
     ctx.font = "20px monospace";
     ctx.fillText("CEL", W - 300, 10);
     ctx.fillText(`${String(player.roundScore).padStart(2,"0")}/${String(need).padStart(2,"0")}`, W - 260, 10);
 
-    // LIFE
     ctx.font = "20px monospace";
     ctx.fillText("LIFE", W - 180, 10);
     ctx.font = "20px system-ui, sans-serif";
     ctx.fillText(livesToHearts(player.lives), W - 120, 10);
 
-    // TIME
     ctx.font = "20px monospace";
     ctx.fillText("TIME", W - 180, 32);
     ctx.fillText(formatTimeLeft(),  W - 120, 32);
@@ -1462,13 +1463,14 @@
       ctx.fillStyle = "#111827";
       ctx.font = "20px system-ui, sans-serif";
       ctx.fillText(
-        player.won ? `Wygrana! Zebrane oscypki: ${player.roundScore} 🧀` : "Koniec gry! Brak serc 💔",
+        player.won ? `Wygrana! Zebrane oscypki: ${player.totalScore} 🧀` : "Koniec gry! Brak serc 💔",
         W/2 - 200, H/2 - 18
       );
       ctx.font = "14px system-ui, sans-serif";
       ctx.fillText("Kliknij „Restart rundy” lub wciśnij R.", W/2 - 160, H/2 + 16);
     }
   }
+
   let lastT = 0;
   function loop(t) {
     const now = t || performance.now();
