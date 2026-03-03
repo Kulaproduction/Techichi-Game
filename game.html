@@ -96,29 +96,17 @@
   }
 
   /* Wymuszenie poziomu na telefonie */
-  @media (orientation: portrait) and (max-width: 900px) {
-    body::before {
-      content: "Obróć telefon poziomo";
-      position: fixed;
-      inset: 0;
-      background: #0b1220;
-      color: white;
-      font-size: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      text-align: center;
-      padding: 40px;
-    }
-    .wrap, .touch {
-      display: none !important;
-    }
-  }
 </style>
 </head>
 
 <body>
+<div id="rotateOverlay" style="
+  position:fixed; inset:0; z-index:10000;
+  display:none; align-items:center; justify-content:center;
+  background:#0b1220; color:#fff; font-size:22px;
+  text-align:center; padding:40px;">
+  Obróć telefon poziomo
+</div>
   <div id="splash" aria-label="Ekran startowy">
     <div class="frame">
       <img src="./plakat.png" alt="Plakat Techichi" />
@@ -1378,6 +1366,24 @@ ctx.restore();
   loop();
 
 })();
+</script>
+<script>
+  (function () {
+    const overlay = document.getElementById('rotateOverlay');
+
+    function updateRotateOverlay() {
+      const portrait = window.innerHeight > window.innerWidth;
+      // możesz zostawić też warunek "mały ekran":
+      const small = Math.min(window.innerWidth, window.innerHeight) < 900;
+
+      if (portrait && small) overlay.style.display = 'flex';
+      else overlay.style.display = 'none';
+    }
+
+    window.addEventListener('resize', updateRotateOverlay);
+    window.addEventListener('orientationchange', updateRotateOverlay);
+    updateRotateOverlay();
+  })();
 </script>
 </body>
 </html>
