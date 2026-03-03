@@ -94,26 +94,17 @@
     border-radius: 999px;
     border: 1px solid rgba(255,255,255,0.14);
   }
-
   /* Wymuszenie poziomu na telefonie */
 </style>
 </head>
-
 <body>
-<div id="rotateOverlay" style="
-  position:fixed; inset:0; z-index:10000;
-  display:none; align-items:center; justify-content:center;
-  background:#0b1220; color:#fff; font-size:22px;
-  text-align:center; padding:40px;">
-  Obróć telefon poziomo
-</div>
   <div id="splash" aria-label="Ekran startowy">
-    <div class="frame">
-      <img src="./plakat.png" alt="Plakat Techichi" />
-      <div class="hint2">Kliknij, aby rozpocząć</div>
-      <div class="cta">🎮 Start</div>
-    </div>
+  <div class="frame">
+    <img src="./plakat.png" alt="Plakat Techichi" />
+    <div class="hint2">Kliknij, aby rozpocząć</div>
+    <div class="cta">🎮 Start</div>
   </div>
+</div>
 
   <div class="wrap">
     <div class="topbar">
@@ -1256,22 +1247,20 @@ if (!player.won && aabb(player, doorBox)) {
    ctx.fillText("WORLD", W/2 - 70, 10);
 ctx.fillText(String(level) + "-1", W/2 - 38, 32);
 
-// CEL dla aktualnej rundy (bezpieczne na telefonie)
+// CEL (przed LIFE) – ta sama czcionka co HUD (20px monospace)
 const need = requiredForLevel(level);
-ctx.save();
-ctx.font = "14px system-ui, sans-serif";
-ctx.textBaseline = "top";
-ctx.textAlign = "right";
-ctx.fillText(`CEL: ${player.score}/${need}`, W - 16, 18);
-ctx.restore();
 
-    ctx.fillText("LIFE", W - 180, 10);
-    ctx.font = "20px system-ui, sans-serif";
-    ctx.fillText(livesToHearts(player.lives), W - 120, 10);
+ctx.textAlign = "left";
+ctx.font = "20px monospace";
+ctx.fillText(`CEL ${player.score}/${need}`, W - 360, 10);
 
-    ctx.font = "20px monospace";
-    ctx.fillText("TIME", W - 180, 32);
-    ctx.fillText(formatTimeLeft(),  W - 120, 32);
+ctx.fillText("LIFE", W - 180, 10);
+ctx.font = "20px system-ui, sans-serif";
+ctx.fillText(livesToHearts(player.lives), W - 120, 10);
+
+ctx.font = "20px monospace";
+ctx.fillText("TIME", W - 180, 32);
+ctx.fillText(formatTimeLeft(),  W - 120, 32);
 
     ctx.restore();
   }
@@ -1366,24 +1355,6 @@ ctx.restore();
   loop();
 
 })();
-</script>
-<script>
-  (function () {
-    const overlay = document.getElementById('rotateOverlay');
-
-    function updateRotateOverlay() {
-      const portrait = window.innerHeight > window.innerWidth;
-      // możesz zostawić też warunek "mały ekran":
-      const small = Math.min(window.innerWidth, window.innerHeight) < 900;
-
-      if (portrait && small) overlay.style.display = 'flex';
-      else overlay.style.display = 'none';
-    }
-
-    window.addEventListener('resize', updateRotateOverlay);
-    window.addEventListener('orientationchange', updateRotateOverlay);
-    updateRotateOverlay();
-  })();
 </script>
 </body>
 </html>
