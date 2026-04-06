@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Techichi - Strażnik Gór</title>
+  <title>Techichi - Straznik Gor</title>
   <style>
     :root { color-scheme: light; }
     html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
@@ -43,7 +43,7 @@
       body { padding-bottom: 120px; }
     }
 
-    #splash, #endPoster {
+    #splash {
       position: fixed;
       inset: 0;
       background: #0b1220;
@@ -52,23 +52,21 @@
       z-index: 9999;
       cursor: pointer;
     }
-    #endPoster { display: none; }
-
-    #splash .frame, #endPoster .frame{
+    #splash .frame{
       width: min(980px, 96vw);
       border-radius: 18px;
       overflow: hidden;
       box-shadow: 0 18px 60px rgba(0,0,0,.45);
       position: relative;
     }
-    #splash img, #endPoster img{
+    #splash img{
       display: block;
       width: 60%;
       max-width: 500px;
       height: auto;
       margin: 0 auto;
     }
-    #splash .cta, #endPoster .cta{
+    #splash .cta{
       position: absolute;
       left: 50%;
       bottom: 18px;
@@ -81,7 +79,7 @@
       border: 1px solid rgba(255,255,255,.18);
       backdrop-filter: blur(6px);
     }
-    #splash .hint2, #endPoster .hint2{
+    #splash .hint2{
       position: absolute;
       left: 50%;
       top: 14px;
@@ -101,28 +99,20 @@
     <div class="frame">
       <img src="./plakat.png" alt="Plakat Techichi" />
       <div class="hint2">Kliknij, aby rozpocząć</div>
-      <div class="cta">🎮 Start</div>
-    </div>
-  </div>
-
-  <div id="endPoster" aria-label="Ekran końcowy">
-    <div class="frame">
-      <img src="./plakat2.png" alt="Gratulacje - Połowa drogi za Tobą" />
-      <div class="hint2">Ukończono 5 rund - kliknij, aby zagrać od nowa</div>
-      <div class="cta">🏁 Zagraj ponownie</div>
+      <div class="cta">Start</div>
     </div>
   </div>
 
   <div class="wrap">
     <div class="topbar">
       <div>
-        <div class="title">Techichi - Strażnik Gór</div>
-        <div class="hint">Sterowanie: ← → (ruch), Spacja (skok). Zbieraj oscypki. Uważaj na koty, kolce i wodę.</div>
+        <div class="title">Techichi - Straznik Gor</div>
+        <div class="hint">Sterowanie: lewo/prawo - ruch, spacja - skok. Zbieraj oscypki. Uwazaj na koty, pociski i wode.</div>
       </div>
-      <div class="pill" id="statusPill">Kliknij plakat, aby zacząć</div>
+      <div class="pill" id="statusPill">Kliknij plakat, aby zaczac</div>
     </div>
 
-    <canvas id="game" width="960" height="540" aria-label="Gra Techichi - Strażnik Gór"></canvas>
+    <canvas id="game" width="960" height="540" aria-label="Gra Techichi - Straznik Gor"></canvas>
 
     <div class="controls">
       <button id="restartBtn">Restart gry</button>
@@ -155,15 +145,23 @@
   const toggleBtn = document.getElementById("toggleBtn");
   const musicBtn = document.getElementById("musicBtn");
   const splash = document.getElementById("splash");
-  const endPoster = document.getElementById("endPoster");
 
   const W = canvas.width;
   const H = canvas.height;
+  const WORLD_W = 2785;
+  const WATER_Y = 495;
+  const TOTAL_LEVELS = 5;
+
+  const endingImg = new Image();
+  endingImg.src = "./plakat2.png";
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const aabb = (a, b) =>
-    a.x < b.x + b.w && a.x + a.w > b.x &&
-    a.y < b.y + b.h && a.y + a.h > b.y;
+  const aabb = (a, b) => (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
 
   let audioCtx = null;
   let musicOn = true;
@@ -182,7 +180,7 @@
     musicBtn.textContent = musicOn ? "Muzyka: ON" : "Muzyka: OFF";
   }
 
-  function beep({freq = 440, dur = 0.12, type = "sine", gain = 0.12}) {
+  function beep({freq=440, dur=0.12, type="sine", gain=0.12}) {
     if (!audioCtx) return;
     const t0 = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
@@ -198,7 +196,7 @@
     osc.stop(t0 + dur + 0.02);
   }
 
-  function noiseSplash(dur = 0.18) {
+  function noiseSplash(dur=0.18) {
     if (!audioCtx) return;
     const t0 = audioCtx.currentTime;
     const bufferSize = Math.floor(audioCtx.sampleRate * dur);
@@ -230,14 +228,13 @@
 
   const melody = [
     { f: 523.25, d: 0.16 }, { f: 659.25, d: 0.16 }, { f: 783.99, d: 0.16 }, { f: 659.25, d: 0.16 },
-    { f: 587.33, d: 0.16 }, { f: 698.46, d: 0.16 }, { f: 880.00, d: 0.16 }, { f: 698.46, d: 0.16 },
+    { f: 587.33, d: 0.16 }, { f: 698.46, d: 0.16 }, { f: 880.00, d: 0.16 }, { f: 698.46, d: 0.16 }
   ];
   let melodyIdx = 0;
 
   function startMusic() {
     if (!audioCtx || !musicOn || musicTimer) return;
     melodyIdx = 0;
-
     const step = () => {
       if (!musicOn || !audioCtx) return;
       const note = melody[melodyIdx % melody.length];
@@ -246,7 +243,6 @@
       melodyIdx++;
       musicTimer = setTimeout(step, Math.floor(note.d * 1000));
     };
-
     step();
   }
 
@@ -262,8 +258,7 @@
     if (audioCtx.state === "suspended") audioCtx.resume();
     musicOn = !musicOn;
     setMusicButton();
-    if (musicOn) startMusic();
-    else stopMusic();
+    if (musicOn) startMusic(); else stopMusic();
   }
 
   function unlockAudioOnce() {
@@ -276,27 +271,31 @@
 
   window.addEventListener("pointerdown", unlockAudioOnce);
   window.addEventListener("keydown", unlockAudioOnce);
-
   musicBtn.addEventListener("click", toggleMusic);
   setMusicButton();
 
   let paused = true;
   let gameOver = false;
-  let finishedAllRounds = false;
+  let gameFinished = false;
+  let started = false;
 
   function setStatus(text) {
     statusPill.textContent = text;
   }
 
   const ROUND_TIME_DEFAULT = 30;
-  const ROUND_TIME_L4 = 45;
+  const ROUND_TIME_LONG = 45;
+  const REQUIRED_OSCYPKI = { 1: 5, 2: 8, 3: 10, 4: 10, 5: 12 };
   let roundTime = ROUND_TIME_DEFAULT;
   let timeLeft = roundTime;
 
-  const REQUIRED_OSCYPKI = { 1: 5, 2: 8, 3: 10, 4: 10, 5: 10 };
-  function requiredForLevel(lvl) { return REQUIRED_OSCYPKI[lvl] ?? 0; }
+  function requiredForLevel(lvl) {
+    return REQUIRED_OSCYPKI[lvl] ?? 0;
+  }
 
-  function resetRoundTimer() { timeLeft = roundTime; }
+  function resetRoundTimer() {
+    timeLeft = roundTime;
+  }
 
   function formatTimeLeft() {
     const s = Math.max(0, Math.ceil(timeLeft));
@@ -309,9 +308,6 @@
   }
 
   const keys = new Set();
-  let started = false;
-
-  const WATER_Y = 495;
 
   const basePlatforms = [
     { x: 0,    y: 420, w: 360, h: 22 },
@@ -322,95 +318,27 @@
     { x: 1540, y: 330, w: 220, h: 22 },
     { x: 1880, y: 270, w: 260, h: 22 },
     { x: 2220, y: 340, w: 220, h: 22 },
-    { x: 2520, y: 390, w: 160, h: 22 },
+    { x: 2520, y: 390, w: 160, h: 22 }
   ];
 
   let platforms = basePlatforms.map(p => ({ ...p }));
-  let prevPlatforms = basePlatforms.map(p => ({ ...p }));
+  let platformPrev = basePlatforms.map(p => ({ ...p }));
   let platformT = 0;
 
   let level = 1;
   let bullets = [];
   let cats = [];
   let collectibles = [];
-  let spikes = [];
-
-  function spikeOn(platformIndex, xOffset, w = 28, h = 16) {
-    return { platformIndex, xOffset, w, h };
-  }
-
-  function spikeCenteredOn(platformIndex, w = 28, h = 16) {
-    const p = basePlatforms[platformIndex];
-    return {
-      platformIndex,
-      xOffset: (p.w - w) / 2,
-      w,
-      h
-    };
-  }
-
-  function getSpikeRect(s) {
-    const p = platforms[s.platformIndex];
-    const x = clamp(p.x + s.xOffset, p.x + 10, p.x + p.w - s.w - 10);
-    const y = p.y - s.h;
-    return { x, y, w: s.w, h: s.h };
-  }
-
-  function updatePlatforms(dt) {
-    prevPlatforms = platforms.map(p => ({ ...p }));
-    platforms = basePlatforms.map(p => ({ ...p }));
-
-    if (level !== 4 && level !== 5) return;
-
-    platformT += dt;
-
-    const movingIdx = [1, 3, 5, 7];
-    for (const i of movingIdx) {
-      const p = platforms[i];
-      const base = basePlatforms[i];
-      const amp = 70;
-      const spd = 1.2;
-      const phase = i * 0.9;
-      p.x = base.x + Math.sin(platformT * spd + phase) * amp;
-    }
-
-    for (const c of cats) {
-      if (!c.alive) continue;
-      const idx = c.platformIndex;
-      const oldP = prevPlatforms[idx];
-      const newP = platforms[idx];
-      if (oldP && newP) {
-        c.x += (newP.x - oldP.x);
-      }
-    }
-
-    if (
-      player.alive &&
-      player.onGround &&
-      player.standingPlatformIndex !== -1
-    ) {
-      const idx = player.standingPlatformIndex;
-      const oldP = prevPlatforms[idx];
-      const newP = platforms[idx];
-
-      if (oldP && newP) {
-        const dx = newP.x - oldP.x;
-        const dy = newP.y - oldP.y;
-        player.x += dx;
-        player.y += dy;
-      }
-    }
-  }
 
   const hut = {
     x: 2605, y: 280, w: 170, h: 170,
-    door: { x: 2670, y: 345, w: 55, h: 85 },
+    door: { x: 2670, y: 345, w: 55, h: 85 }
   };
 
   const hutOscypki = [
     { x: hut.x + 55, y: hut.y + 118, r: 10 },
     { x: hut.x + 82, y: hut.y + 112, r: 10 },
-    { x: hut.x + 108, y: hut.y + 118, r: 10 },
+    { x: hut.x + 108, y: hut.y + 118, r: 10 }
   ];
 
   const camera = { x: 0, y: 0 };
@@ -468,7 +396,7 @@
     if (smoke.length > 80) smoke.shift();
   }
 
-  function makeCatOnPlatform(platformIndex, x, dir, kind = "gray") {
+  function makeCatOnPlatform(platformIndex, x, dir) {
     const p = platforms[platformIndex];
     const w = 40, h = 28;
     const safeX = clamp(x, p.x + 8, p.x + p.w - w - 8);
@@ -480,15 +408,29 @@
       vx: 1.05 * dir,
       alive: true,
       shootCd: 9999,
-      kind
+      centered: false
+    };
+  }
+
+  function makeCenteredCatOnPlatform(platformIndex) {
+    const p = platforms[platformIndex];
+    const w = 40, h = 28;
+    return {
+      platformIndex,
+      x: p.x + (p.w - w) / 2,
+      y: p.y - h,
+      w, h,
+      vx: 0,
+      alive: true,
+      shootCd: 9999,
+      centered: true
     };
   }
 
   function spawnBulletLeft(fromCat) {
     const bx = fromCat.x - 2;
     const by = fromCat.y + fromCat.h * 0.55;
-    const speed = 3.0;
-    bullets.push({ x: bx, y: by, vx: -speed, vy: 0, r: 5, life: 320 });
+    bullets.push({ x: bx, y: by, vx: -3.0, vy: 0, r: 5, life: 320 });
   }
 
   function updateBullets() {
@@ -507,6 +449,7 @@
         loseLife("Pocisk kota");
       }
     }
+
     bullets = bullets.filter(b => b.life > 0);
   }
 
@@ -527,26 +470,18 @@
     }
   }
 
-  const catsStart = [
-    makeCatOnPlatform(2, 560, 1),
-    makeCatOnPlatform(5, 1600, -1),
-    makeCatOnPlatform(7, 2300, 1),
-  ];
+  function centerOffsetFor(platformIndex) {
+    const p = basePlatforms[platformIndex];
+    return (p.w - 28) / 2;
+  }
 
-  const catsL5Start = [
-    makeCatOnPlatform(2, 560, 1, "yellow"),
-    makeCatOnPlatform(5, 1600, -1, "yellow"),
-    makeCatOnPlatform(7, 2300, 1, "yellow"),
-  ];
-
-  const catsL3Start = basePlatforms.map((p, idx) => {
-    const dir = (idx % 2 === 0) ? 1 : -1;
-    const x = p.x + p.w * 0.5;
-    return makeCatOnPlatform(idx, x, dir);
-  });
-
-  function onTopOf(platformIndex, xOffset, r = 10) {
+  function onTopOf(platformIndex, xOffset, r=10) {
     return { platformIndex, xOffset, r, taken: false };
+  }
+
+  function centerCollect(platformIndex, r=10) {
+    const p = basePlatforms[platformIndex];
+    return onTopOf(platformIndex, p.w / 2, r);
   }
 
   function getCollectPos(o) {
@@ -556,6 +491,19 @@
     return { x, y, r: o.r };
   }
 
+  const catsStart = [
+    makeCatOnPlatform(2, 560, 1),
+    makeCatOnPlatform(5, 1600, -1),
+    makeCatOnPlatform(7, 2300, 1)
+  ];
+
+  const catsL3Start = basePlatforms.map((p, idx) => {
+    const dir = (idx % 2 === 0) ? 1 : -1;
+    return makeCatOnPlatform(idx, p.x + p.w * 0.5, dir);
+  });
+
+  const catsL5Start = [0,1,2,3,4,5,6,7,8].map(idx => makeCenteredCatOnPlatform(idx));
+
   const collectiblesStart = [
     onTopOf(0, 70), onTopOf(0, 140), onTopOf(0, 210),
     onTopOf(1, 40), onTopOf(1, 120),
@@ -563,24 +511,14 @@
     onTopOf(3, 50), onTopOf(3, 120),
     onTopOf(4, 60), onTopOf(4, 160),
     onTopOf(5, 60),
-    onTopOf(6, 90),
+    onTopOf(6, 90)
   ];
 
   const collectiblesL2Start = [
-    onTopOf(0, 300),
-    onTopOf(1, 170),
-    onTopOf(2, 80),
-    onTopOf(3, 90),
-    onTopOf(4, 220),
-    onTopOf(5, 140),
-    onTopOf(6, 170),
-    onTopOf(7, 60),
-    onTopOf(7, 140),
-    onTopOf(8, 60),
-    onTopOf(2, 210),
-    onTopOf(4, 90),
-    onTopOf(6, 70),
-    onTopOf(5, 90),
+    onTopOf(0, 300), onTopOf(1, 170), onTopOf(2, 80), onTopOf(3, 90),
+    onTopOf(4, 220), onTopOf(5, 140), onTopOf(6, 170), onTopOf(7, 60),
+    onTopOf(7, 140), onTopOf(8, 60), onTopOf(2, 210), onTopOf(4, 90),
+    onTopOf(6, 70), onTopOf(5, 90)
   ];
 
   const collectiblesL3Start = [
@@ -589,9 +527,7 @@
     onTopOf(2, 20), onTopOf(2, 90), onTopOf(2, 160),
     onTopOf(3, 20), onTopOf(3, 140),
     onTopOf(4, 30), onTopOf(4, 200),
-    onTopOf(5, 110),
-    onTopOf(6, 210),
-    onTopOf(8, 90),
+    onTopOf(5, 110), onTopOf(6, 210), onTopOf(8, 90)
   ];
 
   const collectiblesL4Start = [
@@ -601,58 +537,82 @@
     onTopOf(3, 40), onTopOf(3, 130),
     onTopOf(4, 60), onTopOf(4, 200),
     onTopOf(5, 60), onTopOf(5, 160),
-    onTopOf(7, 60), onTopOf(7, 150),
+    onTopOf(7, 60), onTopOf(7, 150)
   ];
 
   const collectiblesL5Start = [
-    onTopOf(0, 80), onTopOf(1, 70),
-    onTopOf(2, 60), onTopOf(2, 180),
-    onTopOf(3, 60), onTopOf(4, 120),
-    onTopOf(5, 70), onTopOf(6, 120),
-    onTopOf(7, 70), onTopOf(8, 80),
+    centerCollect(0), centerCollect(1), centerCollect(2),
+    centerCollect(3), centerCollect(4), centerCollect(5),
+    centerCollect(6), centerCollect(7), centerCollect(8),
+    onTopOf(0, 80), onTopOf(4, 90), onTopOf(8, 90)
   ];
 
-  const spikesL5Start = [
-    spikeCenteredOn(1),
-    spikeCenteredOn(2),
-    spikeCenteredOn(4),
-    spikeCenteredOn(5),
-    spikeCenteredOn(7),
-  ];
+  function updatePlatforms(dt) {
+    platformPrev = platforms.map(p => ({ ...p }));
+    platforms = basePlatforms.map(p => ({ ...p }));
+
+    if (level !== 4 && level !== 5) return;
+
+    platformT += dt;
+
+    if (level === 4) {
+      const movingIdx = [1, 3, 5, 7];
+      for (const i of movingIdx) {
+        const p = platforms[i];
+        const base = basePlatforms[i];
+        p.x = base.x + Math.sin(platformT * 1.2 + i * 0.9) * 70;
+      }
+    }
+
+    if (level === 5) {
+      const movingIdx = [1, 2, 3, 5, 6, 7];
+      for (const i of movingIdx) {
+        const p = platforms[i];
+        const base = basePlatforms[i];
+        p.x = base.x + Math.sin(platformT * 1.45 + i * 0.8) * 95;
+      }
+    }
+
+    for (const c of cats) {
+      if (!c.alive) continue;
+      const idx = c.platformIndex;
+      const oldP = platformPrev[idx];
+      const newP = platforms[idx];
+      if (!oldP || !newP) continue;
+      if (c.centered) {
+        c.x = newP.x + (newP.w - c.w) / 2;
+      } else {
+        c.x += (newP.x - oldP.x);
+      }
+    }
+  }
+
+  function getStandingPlatformDelta() {
+    if (!player.onGround || player.standingPlatformIndex < 0) {
+      return { dx: 0, dy: 0 };
+    }
+    const idx = player.standingPlatformIndex;
+    const prev = platformPrev[idx];
+    const curr = platforms[idx];
+    if (!prev || !curr) return { dx: 0, dy: 0 };
+    return { dx: curr.x - prev.x, dy: curr.y - prev.y };
+  }
 
   function collectCheck() {
     const pb = { x: player.x, y: player.y, w: player.w, h: player.h };
-
     for (const o of collectibles) {
       if (o.taken) continue;
       const pos = getCollectPos(o);
       const ob = { x: pos.x - pos.r, y: pos.y - pos.r, w: pos.r * 2, h: pos.r * 2 };
-
       if (aabb(pb, ob)) {
         o.taken = true;
         player.roundScore += 1;
         player.totalScore += 1;
-
         ensureAudio();
         if (audioCtx && audioCtx.state !== "suspended") {
           beep({ freq: 988, dur: 0.06, type: "triangle", gain: 0.07 });
           setTimeout(() => beep({ freq: 1175, dur: 0.07, type: "triangle", gain: 0.06 }), 55);
         }
-      }
-    }
-  }
-
-  function spikeCheck() {
-    if (level !== 5) return;
-    if (!player.alive || player.won) return;
-    if (player.invuln > 0) return;
-
-    const pb = { x: player.x, y: player.y, w: player.w, h: player.h };
-    for (const s of spikes) {
-      const r = getSpikeRect(s);
-      if (aabb(pb, r)) {
-        loseLife("Kolce");
-        return;
       }
     }
   }
@@ -664,27 +624,12 @@
   const JUMP = 11.2;
 
   function onTimeOut() {
-    if (gameOver || paused) return;
-    if (!player.alive || player.won) return;
-
-    loseLife("Czas minął");
-
+    if (gameOver || paused || !player.alive || player.won) return;
+    loseLife("Czas minal");
     if (!gameOver && player.alive) {
       respawnPlayer();
       resetRoundTimer();
     }
-  }
-
-  function showEndPoster() {
-    paused = true;
-    gameOver = true;
-    finishedAllRounds = true;
-    if (endPoster) endPoster.style.display = "grid";
-    setStatus("Gratulacje! Ukończyłeś 5 rund.");
-  }
-
-  function hideEndPoster() {
-    if (endPoster) endPoster.style.display = "none";
   }
 
   function respawnPlayer() {
@@ -699,51 +644,38 @@
 
   function startLevel(nr) {
     level = nr;
-    roundTime = (level === 4 || level === 5) ? ROUND_TIME_L4 : ROUND_TIME_DEFAULT;
+    roundTime = (level >= 4) ? ROUND_TIME_LONG : ROUND_TIME_DEFAULT;
 
     respawnPlayer();
     player.won = false;
     player.alive = true;
-
     player.roundScore = 0;
 
     bullets = [];
-    spikes = [];
     resetRoundTimer();
+    platformT = 0;
+    platforms = basePlatforms.map(p => ({ ...p }));
+    platformPrev = basePlatforms.map(p => ({ ...p }));
 
     if (level === 1) {
-      cats = catsStart.map(c => ({ ...c, shootCd: 9999, kind: c.kind ?? "gray" }));
+      cats = catsStart.map(c => ({ ...c, shootCd: 9999 }));
       collectibles = collectiblesStart.map(o => ({ ...o }));
-      platformT = 0;
-    }
-
-    if (level === 2) {
-      cats = catsStart.map(c => ({ ...c, shootCd: 120 + Math.floor(Math.random() * 140), kind: c.kind ?? "gray" }));
+    } else if (level === 2) {
+      cats = catsStart.map(c => ({ ...c, shootCd: 120 + Math.floor(Math.random() * 140) }));
       collectibles = collectiblesL2Start.map(o => ({ ...o }));
-      platformT = 0;
-    }
-
-    if (level === 3) {
-      cats = catsL3Start.map(c => ({ ...c, shootCd: 9999, kind: c.kind ?? "gray" }));
+    } else if (level === 3) {
+      cats = catsL3Start.map(c => ({ ...c, shootCd: 9999 }));
       collectibles = collectiblesL3Start.map(o => ({ ...o }));
-      platformT = 0;
-    }
-
-    if (level === 4) {
-      cats = catsStart.map(c => ({ ...c, shootCd: 120 + Math.floor(Math.random() * 140), kind: c.kind ?? "gray" }));
+    } else if (level === 4) {
+      cats = catsStart.map(c => ({ ...c, shootCd: 120 + Math.floor(Math.random() * 140) }));
       collectibles = collectiblesL4Start.map(o => ({ ...o }));
-      platformT = 0;
-    }
-
-    if (level === 5) {
-      cats = catsL5Start.map(c => ({ ...c, shootCd: 9999, kind: "yellow" }));
+    } else if (level === 5) {
+      cats = catsL5Start.map(c => ({ ...c, shootCd: 9999 }));
       collectibles = collectiblesL5Start.map(o => ({ ...o }));
-      spikes = spikesL5Start.map(s => ({ ...s }));
-      platformT = 0;
     }
 
     gameOver = false;
-    finishedAllRounds = false;
+    gameFinished = false;
     paused = false;
     toggleBtn.textContent = "Pauza";
     setStatus("Runda: " + level);
@@ -752,24 +684,12 @@
   function startFromSplash() {
     if (started) return;
     started = true;
-
-    hideEndPoster();
     if (splash) splash.style.display = "none";
     startLevel(1);
-    paused = false;
-    toggleBtn.textContent = "Pauza";
-    setStatus("Runda: 1");
     unlockAudioOnce();
   }
 
   if (splash) splash.addEventListener("pointerdown", startFromSplash);
-
-  if (endPoster) {
-    endPoster.addEventListener("pointerdown", () => {
-      hideEndPoster();
-      reset();
-    });
-  }
 
   const btnLeft = document.getElementById("btnLeft");
   const btnRight = document.getElementById("btnRight");
@@ -777,18 +697,8 @@
 
   function bindHold(btn, code) {
     if (!btn) return;
-
-    const down = (e) => {
-      e.preventDefault();
-      startFromSplash();
-      keys.add(code);
-    };
-
-    const up = (e) => {
-      e.preventDefault();
-      keys.delete(code);
-    };
-
+    const down = (e) => { e.preventDefault(); startFromSplash(); keys.add(code); };
+    const up = (e) => { e.preventDefault(); keys.delete(code); };
     btn.addEventListener("pointerdown", down);
     btn.addEventListener("pointerup", up);
     btn.addEventListener("pointercancel", up);
@@ -800,14 +710,9 @@
   bindHold(btnJump, "Space");
 
   window.addEventListener("keydown", (e) => {
-    if (["ArrowLeft", "ArrowRight", "Space", "KeyP", "ArrowUp", "KeyR", "Enter"].includes(e.code)) {
-      e.preventDefault();
-    }
-
+    if (["ArrowLeft", "ArrowRight", "Space", "KeyP", "ArrowUp", "KeyR", "Enter"].includes(e.code)) e.preventDefault();
     if (!started && (e.code === "Enter" || e.code === "Space")) startFromSplash();
-
     keys.add(e.code);
-
     if (e.code === "KeyP") togglePause();
     if (e.code === "KeyR") reset();
   }, { passive: false });
@@ -817,7 +722,7 @@
   function togglePause() {
     if (gameOver) return;
     paused = !paused;
-    toggleBtn.textContent = paused ? "Wznów" : "Pauza";
+    toggleBtn.textContent = paused ? "Wznow" : "Pauza";
     setStatus(paused ? "Pauza" : "Gramy");
   }
 
@@ -836,7 +741,6 @@
     player.won = false;
     player.lives = 3;
     player.invuln = 0;
-
     player.roundScore = 0;
     player.totalScore = 0;
 
@@ -845,37 +749,31 @@
     timeLeft = roundTime;
 
     bullets = [];
-    spikes = [];
-    cats = catsStart.map(c => ({ ...c, shootCd: 9999, kind: c.kind ?? "gray" }));
+    cats = catsStart.map(c => ({ ...c, shootCd: 9999 }));
     collectibles = collectiblesStart.map(o => ({ ...o }));
 
     platforms = basePlatforms.map(p => ({ ...p }));
-    prevPlatforms = basePlatforms.map(p => ({ ...p }));
+    platformPrev = basePlatforms.map(p => ({ ...p }));
     platformT = 0;
 
     smoke = [];
     splashes = [];
     gameOver = false;
-    finishedAllRounds = false;
-
-    resetRoundTimer();
+    gameFinished = false;
 
     paused = true;
     started = false;
-
-    hideEndPoster();
     if (splash) splash.style.display = "grid";
-
     toggleBtn.textContent = "Pauza";
     heartFx.active = false;
-    setStatus("Kliknij plakat, aby zacząć");
+    setStatus("Kliknij plakat, aby zaczac");
   }
 
   restartBtn.addEventListener("click", reset);
 
   function resolvePlatforms(entity) {
     entity.onGround = false;
-    if (entity === player) entity.standingPlatformIndex = -1;
+    entity.standingPlatformIndex = -1;
 
     entity.x += entity.vx;
     for (const p of platforms) {
@@ -894,7 +792,7 @@
           entity.y = p.y - entity.h;
           entity.vy = 0;
           entity.onGround = true;
-          if (entity === player) entity.standingPlatformIndex = i;
+          entity.standingPlatformIndex = i;
         } else if (entity.vy < 0) {
           entity.y = p.y + p.h;
           entity.vy = 0;
@@ -917,7 +815,7 @@
     if (!left && !right) player.vx *= FRICTION;
 
     if (Math.abs(player.vx) > 0.25) {
-      player.face = (player.vx > 0) ? 1 : -1;
+      player.face = player.vx > 0 ? 1 : -1;
       player.lastFace = player.face;
     } else {
       player.face = player.lastFace;
@@ -937,13 +835,19 @@
     player.vy = clamp(player.vy, -999, 14);
 
     resolvePlatforms(player);
-    spikeCheck();
+
+    if (player.onGround && player.standingPlatformIndex >= 0) {
+      const delta = getStandingPlatformDelta();
+      player.x += delta.dx;
+      player.y += delta.dy;
+      player.x = clamp(player.x, 0, WORLD_W - player.w);
+    }
+
     collectCheck();
 
     if (player.y + player.h > WATER_Y) {
       spawnSplash(player.x + player.w / 2, WATER_Y);
-      loseLife(level === 5 ? "Wpadłeś do lawy" : "Wpadłeś do wody");
-
+      loseLife("Wpadles do wody");
       if (player.alive) {
         respawnPlayer();
         resetRoundTimer();
@@ -953,16 +857,15 @@
     const doorBox = { x: hut.door.x, y: hut.door.y, w: hut.door.w, h: hut.door.h };
     if (!player.won && aabb(player, doorBox)) {
       const need = requiredForLevel(level);
-
       if (player.roundScore >= need) {
-        if (level === 1) startLevel(2);
-        else if (level === 2) startLevel(3);
-        else if (level === 3) startLevel(4);
-        else if (level === 4) startLevel(5);
-        else if (level === 5) showEndPoster();
+        if (level < TOTAL_LEVELS) {
+          startLevel(level + 1);
+        } else {
+          win();
+        }
       } else {
         const missing = need - player.roundScore;
-        setStatus(`Za mało oscypków: brakuje ${missing} (wymagane ${need})`);
+        setStatus(`Za malo oscypkow: brakuje ${missing} (wymagane ${need})`);
       }
     }
 
@@ -976,30 +879,32 @@
       const p = platforms[c.platformIndex];
       c.y = p.y - c.h;
 
-      if (level === 2 || level === 4) {
-        c.shootCd--;
-        if (c.shootCd <= 0 && player.alive && !player.won) {
-          spawnBulletLeft(c);
-          c.shootCd = 130 + Math.floor(Math.random() * 170);
+      if (c.centered) {
+        c.x = p.x + (p.w - c.w) / 2;
+      } else {
+        if (level === 2 || level === 4) {
+          c.shootCd--;
+          if (c.shootCd <= 0 && player.alive && !player.won) {
+            spawnBulletLeft(c);
+            c.shootCd = 130 + Math.floor(Math.random() * 170);
+          }
+        }
+
+        c.x += c.vx;
+        const leftEdge = p.x + 6;
+        const rightEdge = p.x + p.w - c.w - 6;
+
+        if (c.x < leftEdge) {
+          c.x = leftEdge;
+          c.vx *= -1;
+        }
+        if (c.x > rightEdge) {
+          c.x = rightEdge;
+          c.vx *= -1;
         }
       }
 
-      c.x += c.vx;
-
-      const leftEdge = p.x + 6;
-      const rightEdge = p.x + p.w - c.w - 6;
-
-      if (c.x < leftEdge) {
-        c.x = leftEdge;
-        c.vx *= -1;
-      }
-      if (c.x > rightEdge) {
-        c.x = rightEdge;
-        c.vx *= -1;
-      }
-
-      if (!player.alive || player.won) continue;
-      if (player.invuln > 0) continue;
+      if (!player.alive || player.won || player.invuln > 0) continue;
 
       if (aabb(player, c)) {
         const playerBottom = player.y + player.h;
@@ -1014,7 +919,7 @@
             beep({ freq: 980, dur: 0.09, type: "triangle", gain: 0.06 });
           }
         } else {
-          loseLife("Kot Cię dotknął");
+          loseLife("Kot Cie dotknal");
         }
       }
     }
@@ -1039,19 +944,32 @@
     player.invuln = 90;
     player.vx = -2.6 * player.face;
     player.vy = -6;
-    player.standingPlatformIndex = -1;
-
-    player.x = clamp(player.x, 0, 2700 - player.w);
+    player.x = clamp(player.x, 0, WORLD_W - player.w);
     player.y = clamp(player.y, 0, WATER_Y - player.h - 2);
 
     if (player.lives <= 0) {
       player.alive = false;
       gameOver = true;
+      gameFinished = false;
       setStatus("Przegrana - brak serc. Restart?");
       return;
     }
 
-    setStatus(reason + " - zostało: " + livesToHearts(player.lives));
+    setStatus(reason + " - zostalo: " + livesToHearts(player.lives));
+  }
+
+  function win() {
+    player.won = true;
+    gameOver = true;
+    gameFinished = true;
+    paused = false;
+    setStatus("Koniec gry - ukonczyles wszystkie 5 rund!");
+    ensureAudio();
+    if (audioCtx && audioCtx.state !== "suspended") {
+      beep({ freq: 784, dur: 0.12, type: "triangle", gain: 0.07 });
+      setTimeout(() => beep({ freq: 988, dur: 0.14, type: "triangle", gain: 0.08 }), 120);
+      setTimeout(() => beep({ freq: 1175, dur: 0.16, type: "triangle", gain: 0.08 }), 260);
+    }
   }
 
   function drawBackground() {
@@ -1060,14 +978,9 @@
       drawWater();
       return;
     }
-    if (level === 4) {
+    if (level === 4 || level === 5) {
       drawBieszczadyBackground();
       drawWater();
-      return;
-    }
-    if (level === 5) {
-      drawCaveBackground();
-      drawLava();
       return;
     }
 
@@ -1079,7 +992,7 @@
 
     ctx.beginPath();
     ctx.arc(120, 90, 40, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 228, 120, 0.95)";
+    ctx.fillStyle = "rgba(255,228,120,0.95)";
     ctx.fill();
 
     drawMountain(120, 410, 420, 220, "rgba(120,160,200,0.55)");
@@ -1099,12 +1012,12 @@
 
     ctx.beginPath();
     ctx.arc(150, 90, 42, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 230, 140, 0.95)";
+    ctx.fillStyle = "rgba(255,230,140,0.95)";
     ctx.fill();
 
-    drawHillBand(0.78, "rgba(85, 160, 120, 0.55)", 12, 0.9);
-    drawHillBand(0.86, "rgba(70, 145, 105, 0.60)", 10, 1.1);
-    drawHillBand(0.93, "rgba(60, 130, 95, 0.70)", 8, 1.3);
+    drawHillBand(0.78, "rgba(85,160,120,0.55)", 12, 0.9);
+    drawHillBand(0.86, "rgba(70,145,105,0.60)", 10, 1.1);
+    drawHillBand(0.93, "rgba(60,130,95,0.70)", 8, 1.3);
 
     ctx.fillStyle = "rgba(255,255,255,0.55)";
     for (let i = 0; i < 8; i++) {
@@ -1161,7 +1074,6 @@
       const rx = (i * 73) % W;
       const ry = 70 + ((i * 191) % (H - 120));
       const r = 6 + ((i * 17) % 14);
-
       const shade = 0.035 + ((i % 7) * 0.007);
       ctx.fillStyle = `rgba(255,255,255,${shade})`;
       ctx.beginPath();
@@ -1179,36 +1091,18 @@
   function drawWater() {
     const y = WATER_Y - camera.y;
     const waterG = ctx.createLinearGradient(0, y, 0, H);
-    waterG.addColorStop(0, "rgba(70, 160, 220, 0.55)");
-    waterG.addColorStop(1, "rgba(30, 120, 190, 0.75)");
+    waterG.addColorStop(0, "rgba(70,160,220,0.55)");
+    waterG.addColorStop(1, "rgba(30,120,190,0.75)");
     ctx.fillStyle = waterG;
     ctx.fillRect(0, y, W, H - y);
 
     ctx.strokeStyle = "rgba(255,255,255,0.25)";
     ctx.lineWidth = 2;
     for (let i = 0; i < 18; i++) {
-      const xx = (i * 60 + ((Date.now() / 18) % 60));
+      const xx = i * 60 + ((Date.now() / 18) % 60);
       ctx.beginPath();
       ctx.arc(xx, y + 18, 18, 0.15 * Math.PI, 0.85 * Math.PI);
       ctx.stroke();
-    }
-  }
-
-  function drawLava() {
-    const y = WATER_Y - camera.y;
-    const lavaG = ctx.createLinearGradient(0, y, 0, H);
-    lavaG.addColorStop(0, "rgba(255, 120, 40, 0.65)");
-    lavaG.addColorStop(1, "rgba(180, 30, 10, 0.88)");
-    ctx.fillStyle = lavaG;
-    ctx.fillRect(0, y, W, H - y);
-
-    ctx.fillStyle = "rgba(255,220,120,0.22)";
-    for (let i = 0; i < 14; i++) {
-      const xx = (i * 70 + ((Date.now() / 14) % 70));
-      const rr = 10 + (i % 3) * 4;
-      ctx.beginPath();
-      ctx.arc(xx, y + 24 + (i % 2) * 10, rr, 0, Math.PI * 2);
-      ctx.fill();
     }
   }
 
@@ -1288,25 +1182,6 @@
       ctx.moveTo(x + 10, yy);
       ctx.lineTo(x + p.w - 10, yy);
       ctx.stroke();
-    }
-  }
-
-  function drawSpikes() {
-    for (const s of spikes) {
-      const r = getSpikeRect(s);
-      const x = r.x - camera.x;
-      const y = r.y - camera.y;
-
-      ctx.fillStyle = "#ef4444";
-      const tooth = r.w / 3;
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath();
-        ctx.moveTo(x + i * tooth, y + r.h);
-        ctx.lineTo(x + i * tooth + tooth / 2, y);
-        ctx.lineTo(x + i * tooth + tooth, y + r.h);
-        ctx.closePath();
-        ctx.fill();
-      }
     }
   }
 
@@ -1405,21 +1280,10 @@
     ctx.ellipse(x + c.w / 2, y + c.h + 2, 14, 5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    let body = "#9ca3af", head = "#b0b7c3", ear = "#9ca3af", tail = "#9ca3af";
-
-    if (level === 3) {
-      body = "#ef4444";
-      head = "#fb7185";
-      ear = "#dc2626";
-      tail = "#ef4444";
-    }
-
-    if (c.kind === "yellow") {
-      body = "#fbbf24";
-      head = "#fde68a";
-      ear = "#f59e0b";
-      tail = "#fbbf24";
-    }
+    const body = (level === 3 || level === 5) ? "#ef4444" : "#9ca3af";
+    const head = (level === 3 || level === 5) ? "#fb7185" : "#b0b7c3";
+    const ear = (level === 3 || level === 5) ? "#dc2626" : "#9ca3af";
+    const tail = (level === 3 || level === 5) ? "#ef4444" : "#9ca3af";
 
     ctx.fillStyle = body;
     ctx.beginPath();
@@ -1509,9 +1373,7 @@
     roundRect(x + 18, y + 76, 52, 34, 10);
     ctx.fill();
 
-    for (const o of hutOscypki) {
-      drawOscypek(o.x - camera.x, o.y - camera.y, o.r);
-    }
+    for (const o of hutOscypki) drawOscypek(o.x - camera.x, o.y - camera.y, o.r);
 
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     roundRect(x + 18, y + 48, 78, 22, 10);
@@ -1541,7 +1403,6 @@
 
   function drawBrokenHeartFX() {
     if (!heartFx.active) return;
-
     const t = heartFx.t;
     const x = heartFx.x - camera.x;
     const y = heartFx.y - camera.y - (40 - t) * 0.8;
@@ -1584,11 +1445,9 @@
     ctx.fillText(String(level) + "-1", W / 2 - 38, 32);
 
     const need = requiredForLevel(level);
-    ctx.font = "20px monospace";
     ctx.fillText("CEL", W - 300, 10);
     ctx.fillText(`${String(player.roundScore).padStart(2, "0")}/${String(need).padStart(2, "0")}`, W - 260, 10);
 
-    ctx.font = "20px monospace";
     ctx.fillText("LIFE", W - 180, 10);
     ctx.font = "20px system-ui, sans-serif";
     ctx.fillText(livesToHearts(player.lives), W - 120, 10);
@@ -1596,6 +1455,51 @@
     ctx.font = "20px monospace";
     ctx.fillText("TIME", W - 180, 32);
     ctx.fillText(formatTimeLeft(), W - 120, 32);
+    ctx.restore();
+  }
+
+  function drawEndScreen() {
+    ctx.save();
+    ctx.fillStyle = "rgba(11,18,32,0.68)";
+    ctx.fillRect(0, 0, W, H);
+
+    const boxW = 760;
+    const boxH = 430;
+    const boxX = (W - boxW) / 2;
+    const boxY = (H - boxH) / 2;
+
+    roundRect(boxX, boxY, boxW, boxH, 20);
+    ctx.fillStyle = "rgba(255,255,255,0.96)";
+    ctx.fill();
+
+    ctx.fillStyle = "#111827";
+    ctx.font = "700 30px system-ui, sans-serif";
+    ctx.fillText("Brawo! Ukonczyles 5 rund.", boxX + 28, boxY + 28);
+
+    ctx.font = "18px system-ui, sans-serif";
+    ctx.fillText(`Lacznie zebrane oscypki: ${player.totalScore}`, boxX + 28, boxY + 68);
+    ctx.fillText("Nacisnij R albo kliknij Restart gry, aby zagrac ponownie.", boxX + 28, boxY + 96);
+
+    const imgX = boxX + 28;
+    const imgY = boxY + 120;
+    const imgW = boxW - 56;
+    const imgH = boxH - 148;
+
+    if (endingImg.complete && endingImg.naturalWidth > 0) {
+      const ratio = Math.min(imgW / endingImg.naturalWidth, imgH / endingImg.naturalHeight);
+      const dw = endingImg.naturalWidth * ratio;
+      const dh = endingImg.naturalHeight * ratio;
+      const dx = imgX + (imgW - dw) / 2;
+      const dy = imgY + (imgH - dh) / 2;
+      ctx.drawImage(endingImg, dx, dy, dw, dh);
+    } else {
+      roundRect(imgX, imgY, imgW, imgH, 14);
+      ctx.fillStyle = "#e5e7eb";
+      ctx.fill();
+      ctx.fillStyle = "#374151";
+      ctx.font = "20px system-ui, sans-serif";
+      ctx.fillText("Brak pliku plakat2.png obok HTML.", imgX + 24, imgY + 40);
+    }
 
     ctx.restore();
   }
@@ -1605,13 +1509,11 @@
 
     if (!gameOver) {
       updatePlatforms(dt);
-
       timeLeft -= dt;
       if (timeLeft <= 0) {
         timeLeft = 0;
         onTimeOut();
       }
-
       updatePlayer();
       updateCats();
       updateBullets();
@@ -1637,7 +1539,7 @@
     }
     splashes = splashes.filter(s => s.life > 0 && s.a > 0.05);
 
-    camera.x = clamp(player.x - 260, 0, 1950);
+    camera.x = clamp(player.x - 260, 0, WORLD_W - W);
   }
 
   function draw() {
@@ -1645,16 +1547,11 @@
     drawBackground();
 
     for (const p of platforms) drawPlatform(p);
-
-    drawSpikes();
     drawCollectibles();
     drawHut();
     drawSmoke();
 
-    for (const c of cats) {
-      if (c.alive) drawCat(c);
-    }
-
+    for (const c of cats) if (c.alive) drawCat(c);
     drawBullets();
 
     if ((player.invuln > 0) && (Math.floor(player.invuln / 6) % 2 === 0)) {
@@ -1667,7 +1564,7 @@
     drawBrokenHeartFX();
     drawHUD();
 
-    if (gameOver && !finishedAllRounds) {
+    if (gameOver && !gameFinished) {
       ctx.fillStyle = "rgba(17,24,39,0.35)";
       ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = "rgba(255,255,255,0.92)";
@@ -1675,12 +1572,13 @@
       ctx.fill();
       ctx.fillStyle = "#111827";
       ctx.font = "20px system-ui, sans-serif";
-      ctx.fillText(
-        player.alive ? `Runda zakończona. Oscypki: ${player.totalScore} 🧀` : "Koniec gry! Brak serc 💔",
-        W / 2 - 200, H / 2 - 18
-      );
+      ctx.fillText("Koniec gry! Brak serc.", W / 2 - 110, H / 2 - 18);
       ctx.font = "14px system-ui, sans-serif";
-      ctx.fillText("Kliknij „Restart gry” lub wciśnij R.", W / 2 - 150, H / 2 + 16);
+      ctx.fillText("Kliknij Restart gry albo nacisnij R.", W / 2 - 120, H / 2 + 16);
+    }
+
+    if (gameFinished) {
+      drawEndScreen();
     }
   }
 
@@ -1689,7 +1587,6 @@
     const now = t || performance.now();
     const dt = lastT ? (now - lastT) / 1000 : 0;
     lastT = now;
-
     update(dt);
     draw();
     requestAnimationFrame(loop);
@@ -1697,7 +1594,6 @@
 
   reset();
   loop();
-
 })();
 </script>
 </body>
