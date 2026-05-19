@@ -467,7 +467,7 @@
       alive: true,
       centered: false,
       shooter: shoot,
-      shootCd: shoot ? 80 + Math.floor(Math.random() * 80) : 9999
+      shootCd: shoot ? 180 + Math.floor(Math.random() * 160) : 9999
     };
   }
 
@@ -542,7 +542,7 @@
     return {
       platformIndex,
       count,
-      w: 72,
+      w: 42,
       h: 18,
       x: 0,
       y: 0
@@ -748,16 +748,16 @@
       cats = catsStart.map(c => ({ ...c }));
       collectibles = collectiblesStart.map(o => ({ ...o }));
     } else if (level === 2) {
-      cats = catsL2Start.map(c => ({ ...c, shootCd: 90 + Math.floor(Math.random() * 90) }));
+      cats = catsL2Start.map(c => ({ ...c, shootCd: 180 + Math.floor(Math.random() * 160) }));
       collectibles = collectiblesL2Start.map(o => ({ ...o }));
     } else if (level === 3) {
       cats = catsL3Start.map(c => ({ ...c }));
       collectibles = collectiblesL3Start.map(o => ({ ...o }));
     } else if (level === 4) {
-      cats = catsL4Start.map(c => ({ ...c, shootCd: 80 + Math.floor(Math.random() * 90) }));
+      cats = catsL4Start.map(c => ({ ...c, shootCd: 200 + Math.floor(Math.random() * 170) }));
       collectibles = collectiblesL4Start.map(o => ({ ...o }));
     } else if (level === 5) {
-      cats = catsL5Start.map(c => ({ ...c, shootCd: 65 + Math.floor(Math.random() * 70) }));
+      cats = catsL5Start.map(c => ({ ...c, shootCd: 220 + Math.floor(Math.random() * 180) }));
       collectibles = collectiblesL5Start.map(o => ({ ...o }));
       spikes = [
         makeSpikeOnPlatform(0),
@@ -1009,8 +1009,8 @@
         if (c.shootCd <= 0 && player.alive && !player.won) {
           spawnBulletFromCat(c);
           c.shootCd = (level === 5)
-            ? 55 + Math.floor(Math.random() * 60)
-            : 100 + Math.floor(Math.random() * 90);
+            ? 220 + Math.floor(Math.random() * 180)
+            : 180 + Math.floor(Math.random() * 160);
         }
       }
 
@@ -1620,6 +1620,84 @@
     ctx.restore();
   }
 
+  function drawGeneratedEnding(x, y, w, h) {
+    ctx.save();
+
+    const sky = ctx.createLinearGradient(0, y, 0, y + h);
+    sky.addColorStop(0, "#bfe7ff");
+    sky.addColorStop(1, "#fff7d6");
+    roundRect(x, y, w, h, 14);
+    ctx.fillStyle = sky;
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    for (let i = 0; i < 6; i++) {
+      const cx = x + 90 + i * 120;
+      const cy = y + 45 + (i % 2) * 18;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 44, 16, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 34, cy + 4, 32, 12, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx - 30, cy + 6, 30, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function mountain(mx, base, mw, mh, col) {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(mx - mw / 2, base);
+      ctx.lineTo(mx, base - mh);
+      ctx.lineTo(mx + mw / 2, base);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.beginPath();
+      ctx.moveTo(mx - mw * 0.12, base - mh * 0.55);
+      ctx.lineTo(mx, base - mh * 0.96);
+      ctx.lineTo(mx + mw * 0.12, base - mh * 0.55);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    mountain(x + 160, y + h - 58, 280, 190, "#7aa7c7");
+    mountain(x + 380, y + h - 62, 340, 230, "#6f9fc2");
+    mountain(x + 620, y + h - 55, 300, 205, "#7eb0ca");
+
+    ctx.fillStyle = "#5fb36f";
+    ctx.fillRect(x, y + h - 92, w, 92);
+
+    ctx.fillStyle = "#8b5a2b";
+    roundRect(x + w - 190, y + h - 150, 130, 100, 12);
+    ctx.fill();
+    ctx.fillStyle = "#7c3f2a";
+    ctx.beginPath();
+    ctx.moveTo(x + w - 210, y + h - 140);
+    ctx.lineTo(x + w - 125, y + h - 205);
+    ctx.lineTo(x + w - 40, y + h - 140);
+    ctx.closePath();
+    ctx.fill();
+
+    drawChihuahua(x + w / 2 - 24 + camera.x, y + h - 138 + camera.y, -1);
+
+    ctx.fillStyle = "rgba(255,255,255,0.94)";
+    roundRect(x + 80, y + 24, w - 160, 82, 18);
+    ctx.fill();
+
+    ctx.fillStyle = "#111827";
+    ctx.font = "800 34px system-ui, sans-serif";
+    ctx.fillText("TECHICHI WYGRYWA!", x + 120, y + 42);
+
+    ctx.font = "20px system-ui, sans-serif";
+    ctx.fillText("Straznik Gor zebral oscypki i dotarl do chaty.", x + 120, y + 82);
+
+    for (let i = 0; i < 18; i++) {
+      const ox = x + 40 + i * 38;
+      const oy = y + h - 40 - (i % 3) * 10;
+      drawOscypek(ox, oy, 9);
+    }
+
+    ctx.restore();
+  }
+
   function drawEndScreen() {
     ctx.save();
     ctx.fillStyle = "rgba(11,18,32,0.78)";
@@ -1655,12 +1733,7 @@
       const dy = imgY + (imgH - dh) / 2;
       ctx.drawImage(endingImg, dx, dy, dw, dh);
     } else {
-      roundRect(imgX, imgY, imgW, imgH, 14);
-      ctx.fillStyle = "#e5e7eb";
-      ctx.fill();
-      ctx.fillStyle = "#374151";
-      ctx.font = "20px system-ui, sans-serif";
-      ctx.fillText("Brak pliku plakat2.png obok HTML.", imgX + 24, imgY + 40);
+      drawGeneratedEnding(imgX, imgY, imgW, imgH);
     }
 
     ctx.restore();
