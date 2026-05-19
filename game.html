@@ -625,10 +625,17 @@
   ];
 
   const collectiblesL5Start = [
-    centerCollect(0), centerCollect(1), centerCollect(2),
-    centerCollect(3), centerCollect(4), centerCollect(5),
-    centerCollect(6), centerCollect(7), centerCollect(8),
-    onTopOf(0, 90), onTopOf(4, 120), onTopOf(8, 70)
+    // Runda 5: oscypki sa ustawione obok kolcow, nie na ich srodku.
+    // Kolce sa centrowane na platformach, dlatego zbierajki maja offsety przy bokach.
+    onTopOf(0, 70),  onTopOf(0, 270),
+    onTopOf(1, 45),  onTopOf(1, 175),
+    onTopOf(2, 50),  onTopOf(2, 200),
+    onTopOf(3, 42),  onTopOf(3, 148),
+    onTopOf(4, 60),  onTopOf(4, 210),
+    onTopOf(5, 55),
+    onTopOf(6, 205),
+    onTopOf(7, 55),
+    onTopOf(8, 80)
   ];
 
   function updatePlatforms(dt) {
